@@ -3,7 +3,7 @@ import csv
 import os
 import re
 import sys
-from openai import OpenAI
+import google.generativeai as genai
 from typing import List, Tuple
 
 def convert_japanese_to_alphabet(japanese_name: str) -> str:
@@ -151,12 +151,13 @@ def convert_japanese_to_alphabet(japanese_name: str) -> str:
     
     return alphabet_name if alphabet_name else 'unknown_group'
 
-def get_member_colors_from_chatgpt(group_name: str, api_key: str) -> List[Tuple[str, str]]:
+def get_member_colors_from_gemini(group_name: str, api_key: str) -> List[Tuple[str, str]]:
     """
-    ChatGPT APIを使用してメンバー名とメンバーカラーの対応表を取得
+    Gemini APIを使用してメンバー名とメンバーカラーの対応表を取得
     """
-    client = OpenAI(api_key=api_key)
-    
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+
     prompt = f"""{group_name}のメンバー名とメンバーカラーの対応表を作成し、csvファイルを添付して出力してください
 ・形式：
 　・カンマ区切り
@@ -166,35 +167,22 @@ def get_member_colors_from_chatgpt(group_name: str, api_key: str) -> List[Tuple[
 ・人数：全メンバー分"""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "あなたはアイドルグループの専門家です。正確なメンバー情報とカラー情報を提供してください。"},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=2000
-        )
-        
-        content = response.choices[0].message.content
-        
+        response = model.generate_content(prompt)
+        content = response.text
         # CSVデータを抽出
         csv_data = extract_csv_from_response(content)
-        
         if not csv_data:
-            print("警告: ChatGPTの応答からCSVデータを抽出できませんでした。")
+            print("警告: Geminiの応答からCSVデータを抽出できませんでした。")
             print("応答内容:", content)
             return []
-        
         return csv_data
-        
     except Exception as e:
-        print(f"ChatGPT API呼び出しエラー: {e}")
+        print(f"Gemini API呼び出しエラー: {e}")
         return []
 
 def extract_csv_from_response(response: str) -> List[Tuple[str, str]]:
     """
-    ChatGPTの応答からCSVデータを抽出
+    Geminiの応答からCSVデータを抽出
     """
     lines = response.strip().split('\n')
     csv_data = []
@@ -233,39 +221,30 @@ def save_to_csv(data: List[Tuple[str, str]], filepath: str):
 def main():
     parser = argparse.ArgumentParser(description='アイドルグループのメンバー名とメンバーカラーの対応表を取得')
     parser.add_argument('group_name', help='アイドルグループ名（日本語）')
-    parser.add_argument('--api-key', help='OpenAI APIキー（環境変数OPENAI_API_KEYからも取得可能）')
-    
+    parser.add_argument('--api-key', help='Google Gemini APIキー（環境変数GEMINI_API_KEYからも取得可能）')
     args = parser.parse_args()
-    
     # APIキーの取得
-    api_key = args.api_key or os.getenv('OPENAI_API_KEY')
+    api_key = args.api_key or os.getenv('GEMINI_API_KEY')
     if not api_key:
-        print("エラー: OpenAI APIキーが必要です。")
+        print("エラー: Google Gemini APIキーが必要です。")
         print("使用方法:")
-        print("1. 環境変数OPENAI_API_KEYを設定する")
+        print("1. 環境変数GEMINI_API_KEYを設定する")
         print("2. --api-keyオプションで指定する")
         sys.exit(1)
-    
     group_name = args.group_name
     group_name_alphabet = convert_japanese_to_alphabet(group_name)
-    
     print(f"グループ名: {group_name}")
     print(f"アルファベット変換: {group_name_alphabet}")
-    print("ChatGPT APIからメンバー情報を取得中...")
-    
-    # ChatGPTからデータを取得
-    member_data = get_member_colors_from_chatgpt(group_name, api_key)
-    
+    print("Gemini APIからメンバー情報を取得中...")
+    # Geminiからデータを取得
+    member_data = get_member_colors_from_gemini(group_name, api_key)
     if not member_data:
         print("エラー: メンバー情報を取得できませんでした。")
         sys.exit(1)
-    
     print(f"取得したメンバー数: {len(member_data)}")
-    
     # CSVファイルに保存
     csv_filepath = f"./tables/member_colors_{group_name_alphabet}.csv"
     save_to_csv(member_data, csv_filepath)
-    
     # 取得したデータを表示
     print("\n取得したメンバー情報:")
     for name, color in member_data:
