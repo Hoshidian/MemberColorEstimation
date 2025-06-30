@@ -1,0 +1,25 @@
+import requests
+
+API_KEY = "あなたのAPIキー"
+endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+
+def fetch_image_url_from_gemini(member_name, group_name):
+    prompt = f"{group_name}の{member_name}の顔画像URLを1つだけ、説明なしで返してください。"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    data = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
+    response = requests.post(endpoint, headers=headers, json=data)
+    result = response.json()
+    try:
+        return result["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except Exception as e:
+        print("エラー:", e)
+        return "取得失敗"
+
+# テスト
+print(fetch_image_url_from_gemini("岩立沙穂", "akb48"))
