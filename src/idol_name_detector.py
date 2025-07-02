@@ -44,24 +44,24 @@ def analyze_image_with_gemini(image_path: str, group_name: str):
         return f"画像の分析中にエラーが発生しました: {e}"
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("使い方: python idol_name_identifier.py <グループ名> <画像ファイルのパス>")
-        print("例: python idol_name_identifier.py 乃木坂46 work/image.png")
-        sys.exit(1)
+#if __name__ == "__main__":
+#    if len(sys.argv) != 3:
+#        print("使い方: python idol_name_identifier.py <グループ名> <画像ファイルのパス>")
+#        print("例: python idol_name_identifier.py 乃木坂46 work/image.png")
+#        sys.exit(1)
 
-    group_name = sys.argv[1]
-    image_path = sys.argv[2]
+#    group_name = sys.argv[1]
+#    image_path = sys.argv[2]
 
-    if not os.path.exists(image_path):
-        print(f"エラー: 画像ファイルが見つかりません → {image_path}")
-        sys.exit(1)
+#    if not os.path.exists(image_path):
+#        print(f"エラー: 画像ファイルが見つかりません → {image_path}")
+#        sys.exit(1)
 
-    print(f"\n'{group_name}' のアイドル候補を分析中（画像：{image_path}）...\n")
-    result = analyze_image_with_gemini(image_path, group_name)
-    print("--- Geminiの回答 ---")
-    print(result)
-    print("---------------------")
+#    print(f"\n'{group_name}' のアイドル候補を分析中（画像：{image_path}）...\n")
+#    result = analyze_image_with_gemini(image_path, group_name)
+#    print("--- Geminiの回答 ---")
+#    print(result)
+#    print("---------------------")
 
 
 
