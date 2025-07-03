@@ -3,6 +3,7 @@ import pandas as pd
 from flask import Flask, render_template, request
 from idol_name_detector import analyze_image_with_gemini
 from dotenv import load_dotenv
+from Flyer_Info_Get import get_flyer_info_with_gemini
 
 load_dotenv()
 app = Flask(__name__)
@@ -51,12 +52,14 @@ def index():
     group_list = sorted({entry["group"] for entry in data})
     results = []
     gemini_result = ""
+    gemini_result_flyer = ""
     search_mode = "name"
 
     if request.method == "POST":
         group_query = request.form.get("group","")
         name_query = request.form.get("name","")
         image_file = request.files.get("image")
+        flyer_file = request.files.get("flyer")
 
         if image_file and image_file.filename != "":
             search_mode = "image"
@@ -69,6 +72,18 @@ def index():
 
             # Geminiモデルを使って画像解析
             gemini_result = analyze_image_with_gemini(image_path, group_query)
+
+        elif flyer_file and flyer_file.filename != "":
+            search_mode = "flyer"
+            # フライヤー検索処理
+
+            upload_folder = os.path.join(os.path.dirname(__file__), '..', 'images', 'flyers')
+            os.makedirs(upload_folder, exist_ok=True)
+            flyer_path = os.path.join(upload_folder, flyer_file.filename)
+            flyer_file.save(flyer_path)
+
+            # Geminiモデルを使って画像解析
+            gemini_result_flyer = get_flyer_info_with_gemini(flyer_path)
 
         elif group_query.strip() != "" or name_query.strip() != "":
             search_mode = "name"
@@ -86,7 +101,7 @@ def index():
             search_mode = "name"
             results = load_all_member_data().to_dict(orient="records")
 
-    return render_template("index.html", results=results, groups=group_list, gemini_output=gemini_result, mode=search_mode)
+    return render_template("index.html", results=results, groups=group_list, gemini_output=gemini_result, mode=search_mode, gemini_output_flyer=gemini_result_flyer)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080, debug=True)
