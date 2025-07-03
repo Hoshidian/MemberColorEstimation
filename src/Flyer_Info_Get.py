@@ -106,6 +106,29 @@ def get_flyer_info_with_gemini(image_path: str):
             writer.writerow([name, color])
 
     print(f"\n$2705 CSV出力完了: {csv_path}")
+
+    # index.csvにグループ名とファイル名を追記
+    index_path = os.path.join(base_dir, "index.csv")
+    index_exists = os.path.exists(index_path)
+    written_groups = set()
+
+    if index_exists:
+        with open(index_path, "r", encoding="utf-8") as idx:
+            reader = csv.reader(idx)
+            next(reader, None)  # ヘッダーをスキップ
+            written_groups = {row[0] for row in reader}
+
+    if group_name not in written_groups:
+        with open(index_path, "a", newline="", encoding="utf-8") as idx:
+            writer = csv.writer(idx)
+            if not index_exists:
+                writer.writerow(["グループ名", "ファイル名"])
+            writer.writerow([group_name, csv_filename])
+        print(f"index.csv に追加済み: {group_name}, {csv_filename}")
+    else:
+        print(f"index.csv に既に登録されています: {group_name}")
+
+
     return {
         "group_name": group_name,
         "members": [{"name": name, "color": color} for name, color in rows]

@@ -1,6 +1,6 @@
 ﻿import os
 import pandas as pd
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 from idol_name_detector import analyze_image_with_gemini
 from dotenv import load_dotenv
 from Flyer_Info_Get import get_flyer_info_with_gemini
@@ -8,19 +8,29 @@ from Flyer_Info_Get import get_flyer_info_with_gemini
 load_dotenv()
 app = Flask(__name__)
 
-data = [
-    {"group": "AKB48", "csv": "member_colors_akb48.csv"},
-    {"group": "欅坂46", "csv": "member_colors_keyakizaka46.csv"},
-    {"group": "乃木坂46", "csv": "member_colors_nogizaka46.csv"},
-]
-
 # CSVディレクトリ
 CSV_DIR = os.path.join(os.path.dirname(__file__), '..', 'tables')
 
+# imagesディレクトリ
+IMG_DIR = os.path.join(os.path.dirname(__file__), '..', 'images')
+
+@app.route('/images/faces/<filename>')
+def serve_image(filename):
+    return send_from_directory(os.path.join(app.root_path, "..", "images", "faces"), filename)
+
+def load_index_data():
+    try:
+        df = pd.read_csv(os.path.join(CSV_DIR, "index.csv"))
+        df = df.rename(columns={"グループ名": "group", "ファイル名": "csv"})
+        return df.to_dict(orient="records")
+    except Exception as e:
+        print(f"[ERROR] index.csv の読み込み失敗: {e}")
+        return []
 
 def load_all_member_data():
     all_data = []
-    for entry in data:
+    index_data = load_index_data()
+    for entry in index_data:
         group = entry["group"]
         filename = entry["csv"]
         filepath = os.path.join(CSV_DIR, filename)
@@ -35,11 +45,17 @@ def load_all_member_data():
                 "グループ": "group"
             })
 
-            if "face" not in df.columns:
-                df["face"] = ""
+            for _, row in df.iterrows():
+                name = row["name"]
+                face_image_path = os.path.join(IMG_DIR, "faces", f"{name}.jpg")
+                if os.path.exists(face_image_path):
+                    df.loc[row.name, "face"] = f"/images/faces/{row['name']}.jpg"
+                else:
+                    df.loc[row.name, "face"] = ""
 
             all_data.append(df)
         except Exception as e:
+            print(e)
             all_data.append(pd.DataFrame([{"name": "読み込み失敗", "color": str(e), "face": "", "group": group}]))
 
     return pd.concat(all_data, ignore_index=True)
@@ -49,7 +65,8 @@ def load_all_member_data():
 @app.route("/", methods=["GET", "POST"])
 
 def index():
-    group_list = sorted({entry["group"] for entry in data})
+    index_data = load_index_data()
+    group_list = sorted({entry["group"] for entry in index_data})
     results = []
     gemini_result = ""
     gemini_result_flyer = ""
